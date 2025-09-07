@@ -1,0 +1,65 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Reels & Pinterest Downloader</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <style>
+    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial;margin:0;padding:20px;background:#f6f7fb}
+    .box{max-width:720px;margin:20px auto;background:#fff;padding:18px;border-radius:10px;box-shadow:0 6px 22px rgba(0,0,0,0.06)}
+    input{width:100%;padding:12px;border:1px solid #ddd;border-radius:8px}
+    button{padding:10px 14px;margin-top:10px;border:none;background:#2563eb;color:white;border-radius:8px;cursor:pointer}
+    img{max-width:100%;border-radius:8px;margin-top:12px}
+    video{width:100%;margin-top:12px;border-radius:8px}
+    .meta{margin-top:10px}
+    pre{white-space:pre-wrap;word-wrap:break-word;background:#f3f4f6;padding:10px;border-radius:6px}
+  </style>
+</head>
+<body>
+  <div class="box">
+    <h2>Reels & Pinterest Downloader</h2>
+    <p>Paste Instagram Reel or Pinterest video URL and click Fetch.</p>
+
+    <input id="url" placeholder="Paste Instagram or Pinterest URL here" />
+    <button onclick="fetchVideo()">Fetch Video</button>
+
+    <div id="result"></div>
+  </div>
+
+<script>
+async function fetchVideo(){
+  const url = document.getElementById('url').value.trim();
+  const result = document.getElementById('result');
+  result.innerHTML = '<p>Loading…</p>';
+  if(!url){ result.innerHTML = '<p style="color:red">Please paste a URL</p>'; return; }
+
+  try{
+    const res = await fetch('/download?url=' + encodeURIComponent(url));
+    const data = await res.json();
+    if(data.error){
+      result.innerHTML = `<p style="color:red">Error: ${data.error}</p><pre>${JSON.stringify(data.raw_info || {}, null, 2)}</pre>`;
+      return;
+    }
+
+    const title = data.title ? `<h3>${data.title}</h3>` : '';
+    const thumb = data.thumbnail ? `<img src="${data.thumbnail}" alt="thumbnail">` : '';
+    let mediaHTML = '';
+    if(data.ext && data.ext.toLowerCase().includes('mp4')){
+      mediaHTML = `<video controls src="${data.video_url}"></video>`;
+    } else {
+      mediaHTML = `<p>Direct URL: <a href="${data.video_url}" target="_blank">Open video</a></p>`;
+    }
+
+    // Proxy download link (server will stream it)
+    const proxyLink = `/fetch?url=${encodeURIComponent(data.video_url)}`;
+    const downloadBtn = `<p><a href="${data.video_url}" download><button>Download (direct)</button></a>
+                         <a href="${proxyLink}"><button style="margin-left:8px">Download (via server proxy)</button></a></p>`;
+
+    result.innerHTML = title + thumb + mediaHTML + downloadBtn + `<div class="meta"><small>ext: ${data.ext || 'unknown'} — filesize: ${data.filesize || 'unknown'}</small></div>`;
+  }catch(err){
+    result.innerHTML = `<p style="color:red">Unexpected error: ${err}</p>`;
+  }
+}
+</script>
+</body>
+</html>
